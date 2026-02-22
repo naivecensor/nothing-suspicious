@@ -1,0 +1,16 @@
+subs.txt
+configs.txt
+cidr.txt
+cidr2.txt
+
+# Результаты TCP-тестов (если не хочешь их на GitHub)
+tcp_live*
+selected.txt
+work.txt
+vk-ya.txt
+
+
+# Системный мусор
+__pycache__/
+*.log
+.DS_Store
