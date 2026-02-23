@@ -2,15 +2,15 @@ subs.txt
 configs.txt
 cidr.txt
 cidr2.txt
-
-# Результаты TCP-тестов (если не хочешь их на GitHub)
-tcp_live*
+tcp_live.txt
+tcp_live_all.txt
+tcp_live_cidr2.txt
+tcp_live_vk_ya.txt
+tcp_live_work.txt
 selected.txt
 work.txt
 vk-ya.txt
-
-
-# Системный мусор
+cidr2-work.txt
 __pycache__/
 *.log
 .DS_Store
