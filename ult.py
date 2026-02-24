@@ -18,9 +18,9 @@ CONFIGS_FILE = 'configs.txt'
 SUBS_FILE = 'subs.txt'
 
 # Лимиты оптимизированы под сервер (0.87GB RAM / 1 CPU)
-MAX_RESOLVE_THREADS = 50  # Снижено с 1000 для стабильности DNS
-CONCURRENT_TCP_CHECKS = 50  # Снижено с 1000, чтобы не вешать проц на TCP
-TCP_TIMEOUT = 2.5  # Оптимальное время ожидания
+MAX_RESOLVE_THREADS = 1000  # Снижено с 1000 для стабильности DNS
+CONCURRENT_TCP_CHECKS = 1000  # Снижено с 1000, чтобы не вешать проц на TCP
+TCP_TIMEOUT = 5.5  # Оптимальное время ожидания
 
 
 def parse_cidr_lines(lines):
@@ -112,18 +112,24 @@ async def check_tcp(item, semaphore):
 
 def push_to_github():
     print("\n[*] Синхронизация с GitHub...")
+    # 1. Силой забираем всё из облака, чтобы не было конфликтов
+    os.system("git fetch origin main")
+    os.system("git reset --mixed origin/main")
+
+    # 2. Добавляем только наши текстовики
     os.system("git add cidr-git.txt cidr-1.txt cidr-2.txt cidr-all.txt")
 
     status = os.popen("git status --porcelain").read().strip()
     if status:
         os.system(f'git commit -m "{COMMIT_MESSAGE}"')
+        # 3. Пушим. Если будет конфликт — пушим силой (--force)
         if os.system("git push origin main") != 0:
-            print("[!] Ошибка: GitHub отклонил пуш.")
+            print("[!] Обычный пуш не прошел, используем силу...")
+            os.system("git push origin main --force")
         else:
             print("[+] GitHub обновлен!")
     else:
-        print("[*] Изменений нет, пуш пропущен.")
-
+        print("[*] Изменений в прокси нет, пуш не нужен.")
 
 async def main():
     # 1. Загрузка данных
