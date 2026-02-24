@@ -27,8 +27,8 @@ CONFIGS_FILE = get_path('configs.txt')
 SUBS_FILE = get_path('subs.txt')
 
 # Лимиты
-MAX_RESOLVE_THREADS = 1000
-CONCURRENT_TCP_CHECKS = 1000
+MAX_RESOLVE_THREADS = 50
+CONCURRENT_TCP_CHECKS = 100
 TCP_TIMEOUT = 5.5
 
 def parse_cidr_lines(lines):
