@@ -8,11 +8,12 @@ import asyncio
 from concurrent.futures import ThreadPoolExecutor
 
 # --- НАСТРОЙКИ ПУТЕЙ ---
-# Определяем папку, в которой лежит сам скрипт
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 
 def get_path(filename):
     return os.path.join(BASE_DIR, filename)
+
 
 # --- НАСТРОЙКИ ---
 GITHUB_PUSH = True
@@ -20,7 +21,6 @@ COMMIT_MESSAGE = "Update proxies: automated check (optimized)"
 
 WHITELIST_URL = "https://raw.githubusercontent.com/hxehex/russia-mobile-internet-whitelist/refs/heads/main/cidrwhitelist.txt"
 
-# Все файлы теперь имеют полный путь
 LOCAL_CIDR_FILE = get_path('cidr.txt')
 LOCAL_CIDR_FILE2 = get_path('cidr2.txt')
 CONFIGS_FILE = get_path('configs.txt')
@@ -30,6 +30,7 @@ SUBS_FILE = get_path('subs.txt')
 MAX_RESOLVE_THREADS = 50
 CONCURRENT_TCP_CHECKS = 100
 TCP_TIMEOUT = 5.5
+
 
 def parse_cidr_lines(lines):
     nets = []
@@ -41,6 +42,7 @@ def parse_cidr_lines(lines):
             except:
                 continue
     return nets
+
 
 def load_all_networks():
     sources = {'git': [], 'cidr1': [], 'cidr2': []}
@@ -57,6 +59,7 @@ def load_all_networks():
             with open(filename, 'r', encoding='utf-8') as f:
                 sources[key] = parse_cidr_lines(f.readlines())
     return sources
+
 
 def fetch_all_configs():
     raw = []
@@ -81,6 +84,7 @@ def fetch_all_configs():
                 continue
     return raw
 
+
 def resolve_full_data(link):
     try:
         parsed = urllib.parse.urlparse(link)
@@ -95,6 +99,7 @@ def resolve_full_data(link):
     except:
         return None
 
+
 async def check_tcp(item, semaphore):
     if not item: return None
     async with semaphore:
@@ -107,14 +112,15 @@ async def check_tcp(item, semaphore):
         except:
             return None
 
+
 def push_to_github():
     print("\n[*] Синхронизация с GitHub...")
-    # Переходим в папку скрипта перед работой с Git
     os.chdir(BASE_DIR)
     os.system("git fetch origin main")
     os.system("git reset --mixed origin/main")
 
-    os.system("git add cidr-git.txt cidr-1.txt cidr-2.txt cidr-all.txt")
+    # Изменено название файла в git add
+    os.system("git add cidr-git.txt cidr-1.txt cidr-2.txt cidr-all.txt all-dedup.txt")
 
     status = os.popen("git status --porcelain").read().strip()
     if status:
@@ -126,6 +132,7 @@ def push_to_github():
             print("[+] GitHub обновлен!")
     else:
         print("[*] Изменений нет.")
+
 
 async def main():
     sources = load_all_networks()
@@ -163,7 +170,7 @@ async def main():
         if res: live_items.append(res)
     print(f"[+] Найдено живых: {len(live_items)}")
 
-    # Сохранение с полными путями
+    # Сохранение результатов
     results = {'cidr-git.txt': {}, 'cidr-1.txt': {}, 'cidr-2.txt': {}, 'cidr-all.txt': {}}
     for item in live_items:
         ip, key, link = item['ip'], item['key'], item['link']
@@ -176,15 +183,28 @@ async def main():
         if in_c2: results['cidr-2.txt'][key] = link
         if (in_git or in_c1 or in_c2): results['cidr-all.txt'][key] = link
 
+    final_merged = {}
+
     for filename, unique_proxies in results.items():
         links = list(unique_proxies.values())
+        for k, v in unique_proxies.items():
+            final_merged[k] = v
+
         full_out_path = get_path(filename)
         with open(full_out_path, 'w', encoding='utf-8') as f:
             f.write('\n'.join(links) + '\n' if links else "")
         print(f"[SAVED] {filename:15} | Прокси: {len(links)}")
 
+    # Переименовано в all-dedup.txt
+    final_path = get_path('all-dedup.txt')
+    final_list = list(final_merged.values())
+    with open(final_path, 'w', encoding='utf-8') as f:
+        f.write('\n'.join(final_list) + '\n' if final_list else "")
+    print(f"[SAVED] all-dedup.txt | Прокси: {len(final_list)}")
+
     if GITHUB_PUSH:
         push_to_github()
+
 
 if __name__ == "__main__":
     asyncio.run(main())
