@@ -8,8 +8,11 @@ from typing import Set
 # ========= ФАЙЛЫ =========
 TOKEN_FILE = "bot_token.txt"
 SUBSCRIBERS_FILE = "subscribers.json"
+# Имя файла с прокси, который бот будет мониторить и отправлять
 FILE_TO_SEND = "all-dedup.txt"
 HASH_FILE = "file.hash"
+# Ссылка на APK
+NEKO_APK_URL = "https://github.com/starifly/NekoBoxForAndroid/releases/download/1.4.2-mod-1/NekoBox-1.4.2-mod-1-arm64-v8a.apk"
 
 
 # ========= ЧТЕНИЕ ТОКЕНА =========
@@ -111,16 +114,48 @@ async def bot_task():
                     if chat_id not in subscribers:
                         subscribers.add(chat_id)
                         save_subscribers(subscribers)
-                        await send_message(chat_id, "жди обнов либо пиши 'дай'")
+                        await send_message(chat_id, "пр пиши 'дай' или 'неко'")
                     else:
-                        await send_message(chat_id, "пр")
+                        await send_message(chat_id, "пр пиши 'дай' или 'неко'")
 
                 elif text == "дай":
                     if chat_id not in subscribers:
                         subscribers.add(chat_id)
                         save_subscribers(subscribers)
-                    await send_message(chat_id, "отправляю")
+                    await send_message(chat_id, "ща скину")
                     await send_file(chat_id, FILE_TO_SEND)
+
+                # --- КОМАНДА НЕКО ---
+                elif text == "неко":
+                    await send_message(chat_id, "ща скину апк")
+
+                    apk_filename = "NekoBox.apk"
+
+                    # Скачиваем файл на сервер
+                    try:
+                        r = requests.get(NEKO_APK_URL, stream=True)
+                        with open(apk_filename, 'wb') as f:
+                            for chunk in r.iter_content(chunk_size=1024 * 1024):
+                                if chunk:
+                                    f.write(chunk)
+
+                        # Отправляем файл с сервера
+                        with open(apk_filename, 'rb') as f:
+                            requests.post(
+                                f"{API_URL}/sendDocument",
+                                data={
+                                    "chat_id": chat_id,
+                                    "caption": "NekoBox 1.4.2 Mod (arm64-v8a)"
+                                },
+                                files={"document": f},
+                                timeout=60
+                            )
+
+                        # Удаляем файл после отправки
+                        os.remove(apk_filename)
+
+                    except Exception as e:
+                        await send_message(chat_id, f"ошибка: {e}")
 
         except Exception as e:
             print("[!] Bot error:", e)
