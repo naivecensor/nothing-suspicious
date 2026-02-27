@@ -8,7 +8,7 @@ from typing import Set
 # ========= ФАЙЛЫ =========
 TOKEN_FILE = "bot_token.txt"
 SUBSCRIBERS_FILE = "subscribers.json"
-FILE_TO_SEND = "all-dedup.py"
+FILE_TO_SEND = "all-dedup.txt"
 HASH_FILE = "file.hash"
 
 
