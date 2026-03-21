@@ -23,6 +23,7 @@ WHITELIST_URL = "https://raw.githubusercontent.com/hxehex/russia-mobile-internet
 
 LOCAL_CIDR_FILE = get_path('cidr.txt')
 LOCAL_CIDR_FILE2 = get_path('cidr2.txt')
+CHECKED_CIDR_FILE = get_path('checked-cidr.txt')
 CONFIGS_FILE = get_path('configs.txt')
 SUBS_FILE = get_path('subs.txt')
 
@@ -38,14 +39,16 @@ def parse_cidr_lines(lines):
         line = line.strip()
         if line and not line.startswith('#'):
             try:
-                nets.append(ipaddress.ip_network(line))
+                # Берем только первое слово (адрес), игнорируя комментарии в строке
+                clean_line = line.split()[0]
+                nets.append(ipaddress.ip_network(clean_line, strict=False))
             except:
                 continue
     return nets
 
 
 def load_all_networks():
-    sources = {'git': [], 'cidr1': [], 'cidr2': []}
+    sources = {'git': [], 'cidr1': [], 'cidr2': [], 'checked': []}
     print("[*] Загрузка источников CIDR...")
     try:
         r = requests.get(WHITELIST_URL, timeout=10)
@@ -54,7 +57,13 @@ def load_all_networks():
     except:
         print("[-] Ошибка загрузки GitHub")
 
-    for filename, key in [(LOCAL_CIDR_FILE, 'cidr1'), (LOCAL_CIDR_FILE2, 'cidr2')]:
+    files_map = [
+        (LOCAL_CIDR_FILE, 'cidr1'),
+        (LOCAL_CIDR_FILE2, 'cidr2'),
+        (CHECKED_CIDR_FILE, 'checked')
+    ]
+
+    for filename, key in files_map:
         if os.path.exists(filename):
             with open(filename, 'r', encoding='utf-8') as f:
                 sources[key] = parse_cidr_lines(f.readlines())
@@ -74,11 +83,12 @@ def fetch_all_configs():
         for url in subs:
             try:
                 r = requests.get(url, timeout=10)
+                content = r.text.strip()
                 try:
-                    decoded = base64.b64decode(r.text.strip()).decode('utf-8')
+                    decoded = base64.b64decode(content).decode('utf-8')
                     lines = decoded.splitlines()
                 except:
-                    lines = r.text.splitlines()
+                    lines = content.splitlines()
                 raw.extend([l.strip() for l in lines if l.strip()])
             except:
                 continue
@@ -87,15 +97,26 @@ def fetch_all_configs():
 
 def resolve_full_data(link):
     try:
-        parsed = urllib.parse.urlparse(link)
+        # Убираем префиксы типа если они попали в файл
+        clean_link = link
+        if 'vless://' in link:
+            clean_link = 'vless://' + link.split('vless://')[-1]
+        elif 'ss://' in link:
+            clean_link = 'ss://' + link.split('ss://')[-1]
+
+        parsed = urllib.parse.urlparse(clean_link)
         netloc = parsed.netloc.split('@')[-1]
         host = netloc.split(':')[0] if ':' in netloc else netloc
-        port = int(netloc.split(':')[1]) if ':' in netloc else 443
+        # Очищаем порт от возможных параметров
+        port_raw = netloc.split(':')[1] if ':' in netloc else "443"
+        port = int(port_raw.split('?')[0].split('/')[0])
+
         try:
             ip_obj = ipaddress.ip_address(host)
         except:
             ip_obj = ipaddress.ip_address(socket.gethostbyname(host))
-        return {'link': link, 'ip': ip_obj, 'host': host, 'port': port, 'key': f"{ip_obj}:{port}"}
+
+        return {'link': clean_link, 'ip': ip_obj, 'host': host, 'port': port, 'key': f"{ip_obj}:{port}"}
     except:
         return None
 
@@ -116,20 +137,11 @@ async def check_tcp(item, semaphore):
 def push_to_github():
     print("\n[*] Синхронизация с GitHub...")
     os.chdir(BASE_DIR)
-    os.system("git fetch origin main")
-    os.system("git reset --mixed origin/main")
-
-    # Изменено название файла в git add
-    os.system("git add cidr-git.txt cidr-1.txt cidr-2.txt cidr-all.txt all-dedup.txt")
-
+    os.system("git add cidr-git.txt cidr-1.txt cidr-2.txt cidr-all.txt all-dedup.txt checked-configs.txt")
     status = os.popen("git status --porcelain").read().strip()
     if status:
         os.system(f'git commit -m "{COMMIT_MESSAGE}"')
-        if os.system("git push origin main") != 0:
-            print("[!] Используем силу...")
-            os.system("git push origin main --force")
-        else:
-            print("[+] GitHub обновлен!")
+        os.system("git push origin main")
     else:
         print("[*] Изменений нет.")
 
@@ -142,9 +154,8 @@ async def main():
         return
 
     unique_raw_links = list(set(raw_links_list))
-    print(f"[*] Собрано: {len(raw_links_list)} ссылок. Уникальных: {len(unique_raw_links)}")
+    print(f"[*] Уникальных ссылок: {len(unique_raw_links)}")
 
-    print(f"[*] Резолвинг доменов (потоков: {MAX_RESOLVE_THREADS})...")
     resolved_raw = []
     with ThreadPoolExecutor(max_workers=MAX_RESOLVE_THREADS) as executor:
         loop = asyncio.get_event_loop()
@@ -158,49 +169,53 @@ async def main():
             unique_hosts[item['key']] = item
 
     final_to_check = list(unique_hosts.values())
-    print(f"[*] Готово к TCP тесту: {len(final_to_check)} уникальных IP:Port")
-
     semaphore = asyncio.Semaphore(CONCURRENT_TCP_CHECKS)
     tasks = [check_tcp(item, semaphore) for item in final_to_check]
     live_items = []
 
-    print(f"[*] TCP тест (лимит: {CONCURRENT_TCP_CHECKS})...")
+    print(f"[*] TCP тест {len(final_to_check)} хостов...")
     for task in asyncio.as_completed(tasks):
         res = await task
         if res: live_items.append(res)
-    print(f"[+] Найдено живых: {len(live_items)}")
 
-    # Сохранение результатов
-    results = {'cidr-git.txt': {}, 'cidr-1.txt': {}, 'cidr-2.txt': {}, 'cidr-all.txt': {}}
+    # Инициализация словарей для результатов
+    results = {
+        'cidr-git.txt': {},
+        'cidr-1.txt': {},
+        'cidr-2.txt': {},
+        'cidr-all.txt': {},
+        'checked-configs.txt': {}
+    }
+
     for item in live_items:
         ip, key, link = item['ip'], item['key'], item['link']
+
         in_git = any(ip in net for net in sources['git'])
         in_c1 = any(ip in net for net in sources['cidr1'])
         in_c2 = any(ip in net for net in sources['cidr2'])
+        in_checked = any(ip in net for net in sources['checked'])
 
         if in_git: results['cidr-git.txt'][key] = link
         if in_c1: results['cidr-1.txt'][key] = link
         if in_c2: results['cidr-2.txt'][key] = link
+        if in_checked: results['checked-configs.txt'][key] = link
         if (in_git or in_c1 or in_c2): results['cidr-all.txt'][key] = link
 
     final_merged = {}
-
     for filename, unique_proxies in results.items():
         links = list(unique_proxies.values())
-        for k, v in unique_proxies.items():
-            final_merged[k] = v
+        if filename != 'checked-configs.txt':
+            for k, v in unique_proxies.items():
+                final_merged[k] = v
 
-        full_out_path = get_path(filename)
-        with open(full_out_path, 'w', encoding='utf-8') as f:
+        with open(get_path(filename), 'w', encoding='utf-8') as f:
             f.write('\n'.join(links) + '\n' if links else "")
-        print(f"[SAVED] {filename:15} | Прокси: {len(links)}")
+        print(f"[SAVED] {filename:20} | Прокси: {len(links)}")
 
-    # Переименовано в all-dedup.txt
-    final_path = get_path('all-dedup.txt')
+    # Итоговый дедуп (без учета checked)
     final_list = list(final_merged.values())
-    with open(final_path, 'w', encoding='utf-8') as f:
+    with open(get_path('all-dedup.txt'), 'w', encoding='utf-8') as f:
         f.write('\n'.join(final_list) + '\n' if final_list else "")
-    print(f"[SAVED] all-dedup.txt | Прокси: {len(final_list)}")
 
     if GITHUB_PUSH:
         push_to_github()
