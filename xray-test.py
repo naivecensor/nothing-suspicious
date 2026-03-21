@@ -13,7 +13,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 # ========= НАСТРОЙКИ =========
 XRAY_BIN = "/usr/local/bin/xray" 
 # Сюда вставь свою новую ссылку на качественные конфиги:
-PROXY_URL = "https://raw.githubusercontent.com/VPN-cat/VPN/refs/heads/main/configs/VPN-cat-top-100"
+PROXY_URL = "https://raw.githubusercontent.com/naivecensor/nothing-suspicious/refs/heads/main/checked-configs.txt"
 OUTPUT_FILE = "WORKING_PROXIES.txt"
 
 TIMEOUT = 12  
