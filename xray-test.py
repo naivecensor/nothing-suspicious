@@ -22,7 +22,7 @@ SOURCES = [
 OUTPUT_FILE = "WORKING_PROXIES.txt"
 
 TIMEOUT = 12  
-THREADS = 50  
+THREADS = 150  
 RETRIES = 3  # Количество попыток для каждого прокси
 TEST_URL = "http://www.gstatic.com/generate_204"
 
