@@ -137,15 +137,26 @@ async def check_tcp(item, semaphore):
 def push_to_github():
     print("\n[*] Синхронизация с GitHub...")
     os.chdir(BASE_DIR)
+    
+    # 1. Сначала добавляем все измененные файлы в индекс
     os.system("git add cidr-git.txt cidr-1.txt cidr-2.txt cidr-all.txt all-dedup.txt checked-configs.txt")
+    
+    # 2. Пытаемся забрать обновления через rebase
+    # Теперь, когда файлы в индексе, git разрешит pull
+    os.system("git pull origin main --rebase")
+    
+    # 3. Проверяем, есть ли что коммитить
     status = os.popen("git status --porcelain").read().strip()
     if status:
         os.system(f'git commit -m "{COMMIT_MESSAGE}"')
-        os.system("git push origin main")
+        # 4. Пушим результат
+        push_status = os.system("git push origin main")
+        if push_status == 0:
+            print("[*] Успешно запушено на GitHub.")
+        else:
+            print("[-] Ошибка при push. Возможно, возник конфликт.")
     else:
-        print("[*] Изменений нет.")
-
-
+        print("[*] Изменений для отправки нет.")
 async def main():
     sources = load_all_networks()
     raw_links_list = fetch_all_configs()
