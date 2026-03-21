@@ -12,7 +12,13 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # ========= НАСТРОЙКИ =========
 XRAY_BIN = "/usr/local/bin/xray" 
-PROXY_URL = "https://raw.githubusercontent.com/naivecensor/nothing-suspicious/refs/heads/main/all-dedup.txt"
+# Список источников (добавьте сюда нужные URL)
+SOURCES = [
+    "https://raw.githubusercontent.com/naivecensor/nothing-suspicious/refs/heads/main/all-dedup.txt",
+    "https://raw.githubusercontent.com/VPN-cat/VPN/refs/heads/main/configs/VPN-cat-top-100",
+    "https://raw.githubusercontent.com/zieng2/wl/main/vless_lite.txt",
+    "https://mygala.ru/vpn/subscription.txt"
+]
 OUTPUT_FILE = "WORKING_PROXIES.txt"
 
 TIMEOUT = 12  
@@ -116,21 +122,23 @@ def test_proxy(link):
         )
         
         if wait_socks(port):
+            # Отключаем использование системных прокси при проверке
+            session = requests.Session()
+            session.trust_env = False
             proxies = {"http": f"socks5h://127.0.0.1:{port}", "https": f"socks5h://127.0.0.1:{port}"}
             
-            # Логика тройной проверки
             for attempt in range(1, RETRIES + 1):
                 try:
-                    r = requests.get(TEST_URL, proxies=proxies, timeout=TIMEOUT)
+                    r = session.get(TEST_URL, proxies=proxies, timeout=TIMEOUT)
                     if r.ok:
                         log(f"{prefix} [OK] {address} (Попытка {attempt})")
                         result_link = link
-                        break  # Успех, выходим из цикла попыток
+                        break
                     else:
                         if attempt == RETRIES: log(f"{prefix} [BAD] {address} (Статус: {r.status_code})")
                 except Exception:
                     if attempt == RETRIES: log(f"{prefix} [FAIL] {address}")
-                    else: time.sleep(1) # Небольшая пауза перед повтором при сбое
+                    else: time.sleep(0.5)
         else:
             log(f"{prefix} [LATE] {address}")
     except: pass
@@ -146,16 +154,32 @@ def test_proxy(link):
 
 def main():
     global total_count, counter
-    log(f"Fetching: {PROXY_URL}")
-    try:
-        response = requests.get(PROXY_URL, timeout=20)
-        raw_links = [l.strip() for l in response.text.splitlines() if l.strip()]
-    except Exception as e:
-        log(f"[FATAL] Error: {e}")
+    all_raw_links = []
+    
+    # Сбор ссылок изо всех источников
+    session = requests.Session()
+    session.trust_env = False # Игнорируем прокси при скачивании списков
+    
+    for url in SOURCES:
+        log(f"Fetching source: {url}")
+        try:
+            response = session.get(url, timeout=20)
+            if response.ok:
+                links = [l.strip() for l in response.text.splitlines() if l.strip()]
+                all_raw_links.extend(links)
+                log(f"Добавлено {len(links)} конфигов.")
+            else:
+                log(f"[WARN] Ошибка загрузки {url}: {response.status_code}")
+        except Exception as e:
+            log(f"[WARN] Ошибка подключения к {url}: {e}")
+
+    if not all_raw_links:
+        log("[FATAL] Ссылки не найдены.")
         sys.exit(1)
 
+    # Дедупликация по IP:Port
     unique_proxies = {}
-    for link in raw_links:
+    for link in all_raw_links:
         parsed = parse_vless(link)
         if parsed:
             addr = parsed['settings']['vnext'][0]
@@ -164,7 +188,7 @@ def main():
     links = list(unique_proxies.values())
     total_count = len(links)
     counter = 0
-    log(f"Unique: {total_count}. Testing in {THREADS} threads (по {RETRIES} попытки на прокси)...")
+    log(f"Unique: {total_count}. Testing in {THREADS} threads (по {RETRIES} попытки)...")
 
     working = []
     with ThreadPoolExecutor(max_workers=THREADS) as executor:
