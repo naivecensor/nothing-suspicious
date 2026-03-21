@@ -12,12 +12,12 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # ========= НАСТРОЙКИ =========
 XRAY_BIN = "/usr/local/bin/xray" 
-# Сюда вставь свою новую ссылку на качественные конфиги:
 PROXY_URL = "https://raw.githubusercontent.com/naivecensor/nothing-suspicious/refs/heads/main/checked-configs.txt"
 OUTPUT_FILE = "WORKING_PROXIES.txt"
 
 TIMEOUT = 12  
-THREADS = 10  # Уменьшил количество потоков, чтобы CPU на сервере не захлебнулся
+THREADS = 50  
+RETRIES = 3  # Количество попыток для каждого прокси
 TEST_URL = "http://www.gstatic.com/generate_204"
 
 counter = 0
@@ -91,16 +91,16 @@ def test_proxy(link):
     cfg_path = os.path.join(tempfile.gettempdir(), f"x_cfg_{port}.json")
     
     full_config = {
-        "log": {"loglevel": "none"}, # Отключаем логи Xray внутри конфига
+        "log": {"loglevel": "none"},
         "inbounds": [{"port": port, "listen": "127.0.0.1", "protocol": "socks", "settings": {"udp": True}}],
         "outbounds": [outbound, {"protocol": "freedom", "tag": "direct"}],
         "routing": {
-    	    "rules": [{
+            "rules": [{
                 "type": "field",
                 "inboundTag": ["socks-in"],
                 "outboundTag": "proxy"
             }]
-	}
+        }
     }
     
     proc = None
@@ -109,23 +109,30 @@ def test_proxy(link):
         with open(cfg_path, "w", encoding="utf-8") as f:
             json.dump(full_config, f)
             
-        # КЛЮЧЕВОЕ: Добавляем stderr=DEVNULL, чтобы убрать мусор из консоли
         proc = subprocess.Popen(
             [XRAY_BIN, "run", "-c", cfg_path], 
-            stdout=subprocess.PIPE, 
-            stderr=subprocess.PIPE
+            stdout=subprocess.DEVNULL, 
+            stderr=subprocess.DEVNULL
         )
         
         if wait_socks(port):
             proxies = {"http": f"socks5h://127.0.0.1:{port}", "https": f"socks5h://127.0.0.1:{port}"}
-            try:
-                r = requests.get(TEST_URL, proxies=proxies, timeout=TIMEOUT)
-                if r.ok:
-                    log(f"{prefix} [OK] {address}")
-                    result_link = link
-                else: log(f"{prefix} [BAD] {address}")
-            except: log(f"{prefix} [FAIL] {address}")
-        else: log(f"{prefix} [LATE] {address}")
+            
+            # Логика тройной проверки
+            for attempt in range(1, RETRIES + 1):
+                try:
+                    r = requests.get(TEST_URL, proxies=proxies, timeout=TIMEOUT)
+                    if r.ok:
+                        log(f"{prefix} [OK] {address} (Попытка {attempt})")
+                        result_link = link
+                        break  # Успех, выходим из цикла попыток
+                    else:
+                        if attempt == RETRIES: log(f"{prefix} [BAD] {address} (Статус: {r.status_code})")
+                except Exception:
+                    if attempt == RETRIES: log(f"{prefix} [FAIL] {address}")
+                    else: time.sleep(1) # Небольшая пауза перед повтором при сбое
+        else:
+            log(f"{prefix} [LATE] {address}")
     except: pass
     finally:
         if proc:
@@ -157,7 +164,7 @@ def main():
     links = list(unique_proxies.values())
     total_count = len(links)
     counter = 0
-    log(f"Unique: {total_count}. Testing in {THREADS} threads...")
+    log(f"Unique: {total_count}. Testing in {THREADS} threads (по {RETRIES} попытки на прокси)...")
 
     working = []
     with ThreadPoolExecutor(max_workers=THREADS) as executor:
