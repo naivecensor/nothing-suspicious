@@ -12,7 +12,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # ========= НАСТРОЙКИ =========
 XRAY_BIN = "/usr/local/bin/xray" 
-PROXY_URL = "https://raw.githubusercontent.com/naivecensor/nothing-suspicious/refs/heads/main/checked-configs.txt"
+PROXY_URL = "https://raw.githubusercontent.com/naivecensor/nothing-suspicious/refs/heads/main/all-dedup.txt"
 OUTPUT_FILE = "WORKING_PROXIES.txt"
 
 TIMEOUT = 12  
