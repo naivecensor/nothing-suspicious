@@ -138,25 +138,27 @@ def push_to_github():
     print("\n[*] Синхронизация с GitHub...")
     os.chdir(BASE_DIR)
     
-    # 1. Сначала добавляем все измененные файлы в индекс
-    os.system("git add cidr-git.txt cidr-1.txt cidr-2.txt cidr-all.txt all-dedup.txt checked-configs.txt")
+    # 1. Сначала затягиваем изменения из облака с параметром autostash.
+    # Это позволит сделать pull, даже если файлы уже изменены.
+    os.system("git pull origin main --rebase --autostash")
     
-    # 2. Пытаемся забрать обновления через rebase
-    # Теперь, когда файлы в индексе, git разрешит pull
-    os.system("git pull origin main --rebase")
+    # 2. Добавляем обновленные файлы в индекс
+    os.system("git add cidr-git.txt cidr-1.txt cidr-2.txt cidr-all.txt all-dedup.txt checked-configs.txt")
     
     # 3. Проверяем, есть ли что коммитить
     status = os.popen("git status --porcelain").read().strip()
     if status:
         os.system(f'git commit -m "{COMMIT_MESSAGE}"')
-        # 4. Пушим результат
+        
+        # 4. Пытаемся отправить. Если за это время кто-то еще успел запушить, 
+        # цикл повторится при следующем запуске скрипта.
         push_status = os.system("git push origin main")
         if push_status == 0:
             print("[*] Успешно запушено на GitHub.")
         else:
-            print("[-] Ошибка при push. Возможно, возник конфликт.")
+            print("[-] Ошибка при push. Попробуем в следующий раз.")
     else:
-        print("[*] Изменений для отправки нет.")
+        print("[*] Изменений для коммита нет.")
 async def main():
     sources = load_all_networks()
     raw_links_list = fetch_all_configs()
