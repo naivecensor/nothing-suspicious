@@ -15,10 +15,11 @@ XRAY_BIN = "/usr/local/bin/xray"
 # Список источников (добавьте сюда нужные URL)
 SOURCES = [
     "https://raw.githubusercontent.com/naivecensor/nothing-suspicious/refs/heads/main/all-dedup.txt",
-    "https://raw.githubusercontent.com/naivecensor/nothing-suspicious/refs/heads/main/WORKING_PROXIES.txt"
+    "https://raw.githubusercontent.com/naivecensor/nothing-suspicious/refs/heads/main/WORKING_PROXIES.txt",
     "https://raw.githubusercontent.com/VPN-cat/VPN/refs/heads/main/configs/VPN-cat-top-100",
     "https://raw.githubusercontent.com/zieng2/wl/main/vless_lite.txt",
-    "https://mygala.ru/vpn/subscription.txt"
+    "https://mygala.ru/vpn/subscription.txt",
+    "https://raw.githubusecontent.com/LowiKLive/BypassWhiteListRu/refs"
 ]
 OUTPUT_FILE = "WORKING_PROXIES.txt"
 
