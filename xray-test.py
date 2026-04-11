@@ -12,65 +12,55 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # ========= НАСТРОЙКИ =========
 XRAY_BIN = "/usr/local/bin/xray" 
-# Список источников (добавьте сюда нужные URL)
-SOURCES = [
+
+SOURCES = list(set([
+    # основные
     "https://raw.githubusercontent.com/naivecensor/nothing-suspicious/refs/heads/main/all-dedup.txt",
     "https://raw.githubusercontent.com/naivecensor/nothing-suspicious/refs/heads/main/WORKING_PROXIES.txt",
     "https://raw.githubusercontent.com/VPN-cat/VPN/refs/heads/main/configs/VPN-cat-top-100",
+
+    # wl / bypass
     "https://raw.githubusercontent.com/zieng2/wl/main/vless_lite.txt",
-    "https://mygala.ru/vpn/subscription.txt",
-    "https://raw.githubusecontent.com/LowiKLive/BypassWhiteListRu/refs",
-    "https://raw.githubusercontent.com/prominbro/KfWL/refs/heads/main/KfWL.txt",
-    "https://raw.githubusercontent.com/kort0881/vpn-checker-backend/main/checked/RU_Best/ru_white_part4.txt",
-    "https://raw.githubusercontent.com/kort0881/vpn-checker-backend/main/checked/RU_Best/ru_white_part2.txt",
-    "https://raw.githubusercontent.com/kort0881/vpn-checker-backend/main/checked/RU_Best/ru_white_part1.txt",
-    "https://raw.githubusercontent.com/kort0881/vpn-checker-backend/main/checked/RU_Best/ru_white_part3.txt",
-    "https://raw.githubusercontent.com/zieng2/wl/main/vless_lite.txt",
+    "https://raw.githubusercontent.com/zieng2/wl/main/vless_universal.txt",
     "https://wlrus.lol/confs/selected.txt",
-    "https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/refs/heads/main/Vless-Reality-White-Lists-Rus-Mobile.txt",
+    "https://bp.wl.free.nf/confs/wl.txt",
+    "https://bp.wl.free.nf/confs/selected.txt",
+
+    # ru configs
     "https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/refs/heads/main/Vless-Reality-White-Lists-Rus-Mobile.txt",
     "https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/refs/heads/main/Vless-Reality-White-Lists-Rus-Mobile-2.txt",
-    "https://raw.githubusercontent.com/Ai123999/WhiteKeys/refs/heads/ main/WhiteKeys",
-    "https://github.com/restlycames/RestlyConnect_sub/raw/refs/heads/main/whitelists.txt",
-    "https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/refs/heads/main/Vless-Reality-White-Lists-Rus-Mobile.txt",
-    "https://raw.githubusercontent.com/twinkalex1470-crypto/CatWhiteVPN/refs/heads/main/CaTWhiteVPN.txt",
-    "https://gitverse.ru/api/repos/Vsevj/OBS/raw/branch/master/wwh",
-    "https://gitverse.ru/api/repos/bywarm/rser/raw/branch/master/wl.txt",
-    "https://bp.wl.free.nf/confs/wl.txt",
+    "https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/refs/heads/main/WHITE-CIDR-RU-checked.txt",
+
+    # misc
+    "https://mygala.ru/vpn/subscription.txt",
+    "https://storage.yandexcloud.net/cid-vpn/whitelist.txt",
+    "https://raw.githubusercontent.com/prominbro/KfWL/refs/heads/main/KfWL.txt",
     "https://raw.githubusercontent.com/55prosek-lgtm/vpn_config_for_russia/refs/heads/main/whitelist.txt",
     "https://raw.githubusercontent.com/4nba/vpn-free-russia/refs/heads/master/subscription.txt",
-    "https://storage.yandexcloud.net/cid-vpn/whitelist.txt",
-    "https://raw.githubusercontent.com/Ai123999/WhiteeListSub/refs/heads/main/whitelistkeys",
-    "https://raw.githubusercontent.com/Ai123999/WhiteKeys/refs/heads/main/WhiteKeys",
-    "https://raw.githubusercontent.com/officialdakari/psychic-octo-tribble/refs/heads/main/subwl.txt",
-    "https://github.com/KiryaScript/white-lists/raw/refs/heads/main/githubmirror/28.txt",
-    "https://github.com/KiryaScript/white-lists/raw/refs/heads/main/githubmirror/27.txt",
+
+    # mirrors
+    "https://github.com/restlycames/RestlyConnect_sub/raw/refs/heads/main/whitelists.txt",
     "https://github.com/KiryaScript/white-lists/raw/refs/heads/main/githubmirror/26.txt",
-    "https://raw.githubusercontent.com/koteey/Mr.Kerosin-VPN/refs/heads/main/work.proxies.txt",
-    "https://bp.wl.free.nf/confs/selected.txt",
-    "https://storage.yandexcloud.net/cid-vpn/whitelist.txt",
-    "https://cdn.jsdelivr.net/gh/EtoNeYaProject/EtoNeYaProject.github.io@refs/heads/main/1",
-    "https://raw.githubusercontent.com/zieng2/wl/main/vless_universal.txt",
-    "https://raw.githubusercontent.com/STR97/STRUGOV/refs/heads/main/STR.BYPASS",
-    "https://raw.githubusercontent.com/AvenCores/goida-vpn-configs/refs/heads/main/githubmirror/26.txt",
-    "https://etoneya.a9fm.site/whitelist",
+    "https://github.com/KiryaScript/white-lists/raw/refs/heads/main/githubmirror/27.txt",
+    "https://github.com/KiryaScript/white-lists/raw/refs/heads/main/githubmirror/28.txt",
+
+    # configs
+    "https://raw.githubusercontent.com/twinkalex1470-crypto/CatWhiteVPN/refs/heads/main/CaTWhiteVPN.txt",
     "https://raw.githubusercontent.com/LowiKLive/BypassWhitelistRu/refs/heads/main/WhiteList-Bypass_Ru.txt",
     "https://raw.githubusercontent.com/FLEXIY0/matryoshka-vpn/main/configs/russia_whitelist.txt",
-    "https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/ee6d4bfcb84d006d669d5c38a3111b42917171a2/BLACK_VLESS_RUS.txt",
-    "https://raw.githubusercontent.com/coldwater-10/V2ray-Config/60edae62767c93bfe9b879b813dcb93055ed51e6/Sub3.txt",
-    "https://raw.githubusercontent.com/Epodonios/v2ray-configs/4afc1c4759608b7147b52c22680c2c8ee680ccae/Sub11.txt",
-    "https://raw.githubusercontent.com/MRT-project/v2ray-configs/ebc59f3b428478b2d875a39fc4b2f7025c6c3115/Sub1.txt",
-    "https://raw.githubusercontent.com/Supprise0901/fetchNodes/7fd842633cb04bbdf4ca280e1e09b94b537798e7/Subs/Sub182.txt",
-    "https://raw.githubusercontent.com/4n0nymou3/multi-proxy-config-fetcher/ed5924940680d7dad92cafe165de00a697393d5d/configs/proxy_configs.txt",
-    "https://raw.githubusercontent.com/MatinGhanbari/v2ray-configs/25bb2a9ec2721b62dd3ce3e5b0e12fbacf041f67/subscriptions/v2ray/subs/sub10.txt",
-    "https://raw.githubusercontent.com/Mozafar-sekaloo/.github/59c01ae5ee92b32f237249504e61f24aca3f22b0/Sub1.txt",
-    "https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/refs/heads/main/WHITE-CIDR-RU-checked.txt",
-]
+    "https://cdn.jsdelivr.net/gh/EtoNeYaProject/EtoNeYaProject.github.io@refs/heads/main/1",
+    "https://etoneya.a9fm.site/whitelist",
+
+    # random repos
+    "https://gitverse.ru/api/repos/Vsevj/OBS/raw/branch/master/wwh",
+    "https://gitverse.ru/api/repos/bywarm/rser/raw/branch/master/wl.txt",
+]))
+
 OUTPUT_FILE = "WORKING_PROXIES.txt"
 
 TIMEOUT = 12  
 THREADS = 150  
-RETRIES = 3  # Количество попыток для каждого прокси
+RETRIES = 3  
 TEST_URL = "http://www.gstatic.com/generate_204"
 
 counter = 0
@@ -201,7 +191,7 @@ def test_proxy(link):
 
 def main():
     global total_count, counter
-    all_raw_links = []
+    all_raw_links = set() 
     
     # Сбор ссылок изо всех источников
     session = requests.Session()
@@ -213,7 +203,7 @@ def main():
             response = session.get(url, timeout=20)
             if response.ok:
                 links = [l.strip() for l in response.text.splitlines() if l.strip()]
-                all_raw_links.extend(links)
+                all_raw_links.update(links)
                 log(f"Добавлено {len(links)} конфигов.")
             else:
                 log(f"[WARN] Ошибка загрузки {url}: {response.status_code}")
