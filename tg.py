@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 import os
 import json
 import asyncio
@@ -9,7 +10,7 @@ from typing import Set
 TOKEN_FILE = "bot_token.txt"
 SUBSCRIBERS_FILE = "subscribers.json"
 # Ссылка на сырой файл с прокси
-PROXIES_URL = "https://raw.githubusercontent.com/naivecensor/nothing-suspicious/refs/heads/main/WORKING_PROXIES.txt"
+PROXIES_URL = "https://raw.githubusercontent.com/naivecensor/nothing-suspicious/refs/heads/main/final.txt"
 EXCLAVE_APK_URL = "https://github.com/dyhkwong/Exclave/releases/download/0.17.30/Exclave-0.17.30-arm64-v8a.apk"
 
 def load_token() -> str:
