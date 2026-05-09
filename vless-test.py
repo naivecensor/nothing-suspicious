@@ -17,13 +17,14 @@ SOURCES = list(set([
     # основные
     "https://raw.githubusercontent.com/ShatakVPN/ConfigForge-V2Ray/refs/heads/main/configs/vless.txt",
     "https://raw.githubusercontent.com/whoahaow/rjsxrd/refs/heads/main/githubmirror/bypass/bypass-all.txt",
-    "https://raw.githubusercontent.com/expressalaki/ExpressVPN/refs/heads/main/configs.txt"
+    "https://raw.githubusercontent.com/expressalaki/ExpressVPN/refs/heads/main/configs.txt",
+    "https://raw.githubusercontent.com/naivecensor/nothing-suspicious/refs/heads/main/vless-work.txt"
 
 ]))
 
 OUTPUT_FILE = "vless-work.txt"
 
-TIMEOUT = 12  
+TIMEOUT = 8  
 THREADS = 150  
 RETRIES = 3  
 TEST_URL = "http://www.gstatic.com/generate_204"
